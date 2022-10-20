@@ -1,6 +1,8 @@
 from PIL import Image
 import numpy as np
 
+from settings import *
+
 
 class ImgProcces:
 
@@ -11,13 +13,23 @@ class ImgProcces:
         self.width = 0
         self.height = 0
 
+        self.image_name = ''
 
-    def img_to_array(self, img_path='images/mono.jpg', debug=False):
-        """
-        
-        """
 
-        image = Image.open(img_path)
+    def img_to_array(self, img_path='images/mono.jpg'):
+        """
+        Convert image to array and split on rectangles (4x4).
+        :param img_path(default='images/mono.jpg'): Path to image. 
+        :return: Matrix of loaded image.
+        """
+        try:
+            image = Image.open(img_path)
+        except OSError as err:
+            print(err)
+            return
+
+        self.image_name = img_path.split('/')[-1]
+        print(self.image_name)
 
         img_arr = np.array(image)
 
@@ -25,34 +37,42 @@ class ImgProcces:
         self.height = len(img_arr)
 
         self.rects = self.__split(img_arr)
-        self.rects = [[(2 * x / 255) - 1 for x in rect] for rect in self.rects]
+        # ci(jk) = (2*Ci(jk) / C max) – 1
+        self.rects = [[(2 * x / MAX_COLOR_VAL) - 1 for x in rect] for rect in self.rects]
         self.rects = np.array(self.rects)
 
         return self.rects
 
     
-    def array_to_img(self, img_arr, img_name='out.jpg', debug=False):
+    def array_to_img(self, img_arr, img_name='result/out.jpg'):
         """
-        
+        Convert matrix to image and colorize image.
+        :param img_arr: Image matrix.
+        :param img_name(default='result/out.jpg'): Image name for save
+        :return: Rebuilded colorized image from matrix.
         """
-        img_arr = (img_arr.astype(float) + 1) * 255 / 2
-        img_arr = np.clip(img_arr, 0, 255)
+        # uk = C max *(X'(i) k + 1) /2
+        img_arr = (img_arr.astype(float) + 1) * MAX_COLOR_VAL / 2
+        img_arr = np.clip(img_arr, 0, MAX_COLOR_VAL)
         img_arr = img_arr.tolist()
 
         img = self.__desplit(img_arr)
         img = Image.fromarray(np.asarray(img).astype('uint8'))
-        img.save(f'result/{img_name}')
+        img.save(img_name)
 
         return img
 
     
-    def array_to_compressed_img(self, array, img_name='compressed.jpg', debug=False):
+    def array_to_compressed_img(self, img_arr, img_name='result/compressed.jpg'):
         """
-        
+        Convert matrix to image.
+        :param img_arr: Image matrix.
+        :param img_name(default='result/compressed.jpg'): Image name for save
+        :return: Rebuilded image from matrix.
         """
-        image = self.__desplit(array.tolist())
+        image = self.__desplit(img_arr.tolist())
         image = Image.fromarray(np.asarray(image).astype('uint8'))
-        image.save(f"result/{img_name}")
+        image.save(img_name)
         return image
 
 
@@ -61,13 +81,13 @@ class ImgProcces:
         self.rect_height = 4
 
     
-    def __split(self, array, debug=False):
+    def __split(self, array):
         """
-        
+        Split image array on rectangls (4x4) (convert to matrix).
+        :param array: Image matrix.
+        :return: Rectangeled array of image (image matrix).
         """
-        self.rect_width = 4
-        self.rect_height = 4
-
+        self.__rectangolise()
         array = array.tolist()
 
         self.__rectangolise()
@@ -78,17 +98,21 @@ class ImgProcces:
                 for element in array[row_index][col_index]:
                     result_index = ((row_index // self.rect_height) * int(self.width / self.rect_width)) + (col_index // self.rect_width)
                     result[int(result_index)].append(element)
+       
         return result
 
 
-    def __desplit(self, array, debug=False):
+    def __desplit(self, array):
         """
-        
+        Ressurect default array from rectangeled array.
+        :param array: Rectangeled array of image (image matrix).
+        :return: Ressurected image array.
         """
         result = [[] for _ in range(self.height)]
         for row_index in range(len(array)):
-            for col_index in range(0, len(array[0]), 3):
-                pixel = array[row_index][col_index:col_index+3]
-                result_index = (col_index // (3 * self.rect_width)) + (row_index // (self.width / self.rect_width) * self.rect_height)
+            for col_index in range(0, len(array[0]), COLOR_CODING_POSITIONS):
+                pixel = array[row_index][col_index:col_index + COLOR_CODING_POSITIONS]
+                result_index = (col_index // (COLOR_CODING_POSITIONS * self.rect_width)) + (row_index // (self.width / self.rect_width) * self.rect_height)
                 result[int(result_index)].append(pixel)
+
         return result
