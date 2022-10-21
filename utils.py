@@ -70,6 +70,11 @@ def transpose(matrix):
     
 
 def load_pre_trined_neurons(file_name):
+    """
+    Ask about loading pre-trained neuron.
+    :param file_name: Name of file.
+    :return: User answer about loading or not pretrined neuro.
+    """
     try:
         inpt = str(input('Do you want to load pre-trined neurons {file_name}1.npy and {file_name}2.npy? (Y/n)'))
     except Exception as err:
