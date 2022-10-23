@@ -1,7 +1,8 @@
 import numpy as np
 from time import time
 
-from utils import *
+from utils import matrix_mul, matrix_dif, transpose, \
+    matrix_pow, matrix_single_mul, matrix_sum, is_pre_trained
 
 
 class NeuralCompressor:
@@ -10,30 +11,39 @@ class NeuralCompressor:
         self.p = p
         self.a = a
         self.err = err
-        self.img_arr = img_arr
 
-        self.N = len(self.img_arr[0])
-        self.L = self.img_arr.shape[0] * self.img_arr.shape[1]
+        if img_arr is not None:
+            self.img_arr = img_arr
 
-        # Z = (N*L)/((N+L)*p+2)
-        self.Z = (self.N * self.L) / ((self.N + self.L) * self.p + 2)
+            self.N = len(self.img_arr[0])
+            self.L = self.img_arr.shape[0] * self.img_arr.shape[1]
+
+            # Z = (N*L)/((N+L)*p+2)
+            self.Z = (self.N * self.L) / ((self.N + self.L) * self.p + 2)
 
 
-    def compress_img(self, pre_trained_neurons=False, img_name='mono'):
+    def compress_img(
+            self, 
+            pre_trained_neurons=False, 
+            pre_trained_neurons_name='mono', 
+            compressed_file_name='compressed/mono.npy'
+        ):
         """
         Train neural network for compress img or load trained network from file (pre-trained).
+
         :param pre_trained_neurons(default=False): Load pre trained neurons from file (pre-trained folder) or train new neurons.  
         :param img_name(default='mono'): Image name for classify neurons.
+        :param compressed_file_name(default='compressed/mono.npy'): Save result of compression to file.
         :return: Matrix of compressed image.
         """
+
         if not pre_trained_neurons: 
-            # W'(t + 1) = W/ (t) – α/*[Y(i)] T *∆X(i)
             w1 = np.random.rand(self.N, self.p) * 2 - 1
             w2 = np.array(w1.transpose())
         else:
-            with open(f'pre-trained/{img_name}1.npy', 'rb') as w1_file:
+            with open(f'pre-trained/{pre_trained_neurons_name}1.npy', 'rb') as w1_file:
                 w1 = np.load(w1_file)
-            with open(f'pre-trained/{img_name}2.npy', 'rb') as w2_file:
+            with open(f'pre-trained/{pre_trained_neurons_name}2.npy', 'rb') as w2_file:
                 w2 = np.load(w2_file)
 
         step = 0
@@ -45,7 +55,7 @@ class NeuralCompressor:
 
             timer_start = time()
 
-            for num, row in enumerate(self.img_arr):
+            for row in self.img_arr:
                 row = row.reshape(1, -1)
                 # Y(i) = X(i)*W
                 y = np.matmul(row, w1)
@@ -55,17 +65,18 @@ class NeuralCompressor:
                 dx = x - row
                 dx = dx.reshape(1, -1)
 
-                # W(t + 1) = W(t) –  α*[X(i)] T *∆X(i)*[W'(t)]^T
+                # W2(t + 1) = W(t) - α*[Y(i) T * ∆X(i)]
                 w2 -= self.a * np.matmul(y.transpose(), dx)
+                # W1(t + 1) = W(t) - α*[X(i)] T *∆X(i)*[W'(t)]^T
                 w1 -= self.a * np.matmul(np.matmul(row.transpose(), dx), w2.transpose())
                 
                 # Е(q) = ∑∆X(q)i *∆X(q)i
                 error = (dx * dx).sum()
                 error_common += error
 
-                with open(f'pre-trained/{img_name}1.npy', 'wb') as w1_file:
+                with open(f'pre-trained/{pre_trained_neurons_name}1.npy', 'wb') as w1_file:
                     np.save(w1_file, w1)
-                with open(f'pre-trained/{img_name}2.npy', 'wb') as w2_file:
+                with open(f'pre-trained/{pre_trained_neurons_name}2.npy', 'wb') as w2_file:
                     np.save(w2_file, w2)
 
             timer_finish = time()
@@ -73,21 +84,58 @@ class NeuralCompressor:
             print(f'Iteration: {step}, Time: {timer}s., Error: {error_common}')
 
             if error_common < self.err:
-                compressed_img = []
-                new_row = []
+                compress_matrix = []
                 for row in self.img_arr:
-                    new_row.append(
-                        np.matmul(
-                            np.matmul(row, w1),
-                            w2
-                        )
-                    )
+                    compress_matrix.append(row)
 
-                compressed_img.append(new_row)
-                compressed_img = compressed_img[0]
-                compressed_img = np.array(compressed_img)
-                    
-                return compressed_img
+                # with open(compressed_file_name, 'wb') as compr_file:
+                #     compress_matrix = np.array(compress_matrix)
+                #     np.save(compr_file, compress_matrix)
+
+                return compress_matrix
+
+
+    def decompress_img(
+            self, 
+            pre_trained_neurons_name='mono', 
+            compressed_file_name='compressed/mono.npy'
+        ):
+        """
+        Decompress compressed file with pre-trined neural network.
+
+        :param pre_trained_neurons(default=False): Load pre trained neurons from file (pre-trained folder) or train new neurons.  
+        :param pre_trained_neuron_name(default='mono'): Image name for find classifed neurons.
+        :param compressed_file_name(default='compressed/mono.npy'): Load result of compression.
+        :return: Matrix of compressed image.
+        """
+
+        if is_pre_trained(pre_trained_neurons_name):
+            with open(f'pre-trained/{pre_trained_neurons_name}1.npy', 'rb') as w1_file:
+                w1 = np.load(w1_file)
+            with open(f'pre-trained/{pre_trained_neurons_name}2.npy', 'rb') as w2_file:
+                w2 = np.load(w2_file)
+        else:
+            return
+
+        with open(compressed_file_name, 'rb') as comp_file:
+            try:
+                compressed_img_arr = np.load(comp_file)
+            except Exception as err:
+                print(err)
+                return
+
+        decompressed_img_arr = []
+        for row in compressed_img_arr:
+            decompressed_img_arr.append(
+                np.matmul(
+                    np.matmul(row, w1),
+                    w2
+                )
+            )
+
+        decompressed_img_arr = np.array(decompressed_img_arr)
+
+        return decompressed_img_arr
 
 
     def compress_img_no_np(self, pre_trained_neurons=False, img_name='mono'):

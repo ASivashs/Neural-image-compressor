@@ -51,6 +51,7 @@ class ImgProcces:
         :param img_name(default='result/out.jpg'): Image name for save
         :return: Rebuilded colorized image from matrix.
         """
+
         # uk = C max *(X'(i) k + 1) /2
         img_arr = (img_arr.astype(float) + 1) * MAX_COLOR_VAL / 2
         img_arr = np.clip(img_arr, 0, MAX_COLOR_VAL)
@@ -108,6 +109,7 @@ class ImgProcces:
         :param array: Rectangeled array of image (image matrix).
         :return: Ressurected image array.
         """
+        self.__rectangolise()
         result = [[] for _ in range(self.height)]
         for row_index in range(len(array)):
             for col_index in range(0, len(array[0]), COLOR_CODING_POSITIONS):

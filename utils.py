@@ -1,7 +1,10 @@
+import os
+import numpy as np
+
 
 def matrix_mul(matrix1, matrix2):
     """
-    Matrix multiplicity
+    Matrix multiplicity.
     :param matrix1: First plurality.
     :param matrix2: Second plurality.
     :return: Multiplied matrix.
@@ -39,7 +42,7 @@ def matrix_pow(matrix, n):
 
 def matrix_sum(matrix1, matrix2):
     """
-    Sum of matrix.
+    Sum of two matrix.
     :param matrix1: First synopsis.
     :param matrix2: Second synopsis.
     :return: Summarized matrix.
@@ -50,7 +53,7 @@ def matrix_sum(matrix1, matrix2):
 
 def matrix_dif(matrix1, matrix2):
     """
-    Dif of matrix.
+    Dif of two matrix.
     :param matrix1: 
     :param matrix2:
     :return: Result of operation.
@@ -76,9 +79,46 @@ def load_pre_trined_neurons(file_name):
     :return: User answer about loading or not pretrined neuro.
     """
     try:
-        inpt = str(input('Do you want to load pre-trined neurons {file_name}1.npy and {file_name}2.npy? (Y/n)'))
+        inpt = str(input(f'Do you want to load pre-trined neurons {file_name}1.npy and {file_name}2.npy? (Y/n)'))
     except Exception as err:
         print(err)
     if inpt == 'n' or inpt == 'N':
         return False
     return True
+
+
+def get_current_dir():
+    """
+    
+    """
+    current_dir = '/'.join(__file__.split('/')[:-1])
+    return current_dir
+    
+
+def get_filename(path):
+    """
+    
+    """
+    filename = path.split('/')[-1].split('.')[0]
+    return filename
+
+
+def is_pre_trained(image_name):
+    """
+    
+    """
+    current_dir = get_current_dir()
+    for dirname, _, filename in os.walk(f'{current_dir}/pre-trained'):
+        pre_trained_files = filename
+
+    if f'{image_name}1.npy' in pre_trained_files and f'{image_name}2.npy' in pre_trained_files:
+        return True
+    return False
+    
+
+def save_compress_image(save_file, compressed_matrix):
+    """
+    
+    """
+    with open(save_file, 'wb') as compr_file:
+        np.save(compr_file, compressed_matrix)

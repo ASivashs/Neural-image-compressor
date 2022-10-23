@@ -1,9 +1,9 @@
 import click
-import os
 
 from NeuralCompressor import NeuralCompressor
 from ImgProcces import ImgProcces
-from utils import load_pre_trined_neurons
+from utils import load_pre_trined_neurons, get_filename, \
+    is_pre_trained, save_compress_image
 
 
 @click.group()
@@ -24,21 +24,17 @@ def train():
     default=2000,
     help='Standard error.'
 )
-def train_compress_neuron(path, e):
+def train_compress_neuron(path='images/mono.jpg', e=2000):
     """
     Train neuron for fast compress image.
     """
-    img_name = path.split('/')[-1]
-    img_name = img_name.split('.')[0]
+    
+    img_name = get_filename(path)
 
     img_proccess = ImgProcces()
     img_arr = img_proccess.img_to_array(path)
 
-    pre_trained_path = '/'.join(__file__.split('/')[:-2])
-    for dirname, _, filename in os.walk(f'{pre_trained_path}/pre-trained'):
-        pre_trained_files = filename
-
-    if f'{img_name}1.npy' in pre_trained_files and f'{img_name}2.npy' in pre_trained_files:
+    if is_pre_trained(img_name):
         yn_load_pre_trained = load_pre_trined_neurons(img_name)
     else:
         yn_load_pre_trained = False
@@ -49,7 +45,7 @@ def train_compress_neuron(path, e):
         a=0.0001,
         img_arr=img_arr
     ).compress_img(
-        img_name=img_name, 
+        pre_trained_neurons_name=img_name, 
         pre_trained_neurons=yn_load_pre_trained
         )
 
@@ -64,39 +60,32 @@ def train_compress_neuron(path, e):
 @click.option(
     '--result-path',
     type=str,
-    default='result/out.jpg',
+    default='result/mono.npy',
     help='Path to compress result.'
 )
-def compress_img(path, result_path):
+def compress_img(path='images/mono.jpg', result_path='compressed/mono.npy'):
     """
-    Compress image.
+    Compress image if neuron is pretrained.
     """
-    path = str(path)
-    result_path = str(result_path)
 
-    img_name = path.split('/')[-1]
-    img_name = img_name.split('.')[0]
+    img_name = get_filename(path)
 
     img_proccess = ImgProcces()
     img_arr = img_proccess.img_to_array(path)
 
-    pre_trained_path = '/'.join(__file__.split('/')[:-2])
-    for dirname, _, filename in os.walk(f'{pre_trained_path}/pre-trained'):
-        pre_trained_files = filename
-
-    if f'{img_name}1.npy' in pre_trained_files and f'{img_name}2.npy' in pre_trained_files:
+    if is_pre_trained(img_name):
         compress_matrix = NeuralCompressor(
             p=32,
             err=1000000,
             a=0.0001,
             img_arr=img_arr
         ).compress_img(
-            img_name=img_name, 
+            pre_trained_neurons_name=img_name, 
             pre_trained_neurons=True
             )
 
-        img_proccess.array_to_img(compress_matrix, result_path)
-    
+        save_compress_image(result_path, compress_matrix)
+
     else:
         print('Neuron is not trained. Please before compress train neuron: \
             "./compressor.py train-compress-neuron --path [Path to image] -e [Standart error]"')
@@ -106,46 +95,38 @@ def compress_img(path, result_path):
 @click.option(
     '--path',
     type=str,
-    default='images/mono.jpg',
-    help='Path to image.'
+    default='compressed/mono.npy',
+    help='Path to compressed image.'
 )
 @click.option(
     '--result-path',
     type=str,
-    default='result/out_mono.jpg',
-    help='Path to compress result.'
+    default='result/mono.jpg',
+    help='Path to decompressed result.'
 )
-def compress_monochrome_img(path, result_path):
+def decompress_img(path='compressed/mono.npy', result_path='result/mono.jpg'):
     """
-    Compress image to monochrome mode (take less space).
+    Decompress image if neuron is pretrained.
     """
-    path = str(path)
-    result_path = str(result_path)
 
-    img_name = path.split('/')[-1]
-    img_name = img_name.split('.')[0]
+    img_name = get_filename(path)
 
     img_proccess = ImgProcces()
-    img_arr = img_proccess.img_to_array(path)
+    img_arr = img_proccess.img_to_array(f'images/{img_name}.jpg')
 
-    pre_trained_path = '/'.join(__file__.split('/')[:-2])
-    for dirname, _, filename in os.walk(f'{pre_trained_path}/pre-trained'):
-        pre_trained_files = filename
-
-    if f'{img_name}1.npy' in pre_trained_files and f'{img_name}2.npy' in pre_trained_files:
-        compress_matrix = NeuralCompressor(
+    if is_pre_trained(img_name):
+        decompress_matrix = NeuralCompressor(
             p=32,
             err=1000000,
             a=0.0001,
             img_arr=img_arr
-        ).compress_img(
-            img_name=img_name, 
-            pre_trained_neurons=True
+        ).decompress_img(
+            pre_trained_neurons_name=img_name, 
+            compressed_file_name=path
             )
 
-        result_path = f'{pre_trained_path}/{result_path}'
-        img_proccess.array_to_compressed_img(compress_matrix, result_path)
-    
+        img_proccess.array_to_img(decompress_matrix, result_path)
+
     else:
         print('Neuron is not trained. Please before compress train neuron: \
             "./compressor.py train-compress-neuron --path [Path to image] -e [Standart error]"')
