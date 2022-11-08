@@ -88,10 +88,6 @@ class NeuralCompressor:
                 for row in self.img_arr:
                     compress_matrix.append(row)
 
-                # with open(compressed_file_name, 'wb') as compr_file:
-                #     compress_matrix = np.array(compress_matrix)
-                #     np.save(compr_file, compress_matrix)
-
                 return compress_matrix
 
 
